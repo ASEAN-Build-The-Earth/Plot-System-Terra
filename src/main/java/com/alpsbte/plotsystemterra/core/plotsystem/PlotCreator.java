@@ -48,7 +48,7 @@ public class PlotCreator {
         void onSchematicsCreationComplete(Polygonal2DRegion plotRegion, CylinderRegion environmentRegion, Vector3 plotCenter);
     }
 
-    public final static double PLOT_VERSION = 3.0;
+    public final static double PLOT_VERSION = 4.0;
     public final static String schematicsPath = Paths.get(PlotSystemTerra.getPlugin().getDataFolder().getAbsolutePath(), "schematics") + File.separator;
     public final static int MIN_OFFSET_Y = 5;
 
@@ -98,7 +98,7 @@ public class PlotCreator {
                 Vector3 plotRegionCenter = plotRegion.getCenter();
                 environmentRegion = new CylinderRegion(
                         plotRegion.getWorld(),
-                        BlockVector3.at(Math.floor(plotRegionCenter.getX()), plotRegionCenter.getY(), Math.floor(plotRegionCenter.getZ())),
+                        BlockVector3.at(Math.floor(plotRegionCenter.x()), plotRegionCenter.y(), Math.floor(plotRegionCenter.z())),
                         Vector2.at(radius, radius),
                         minY,
                         maxY
@@ -113,7 +113,7 @@ public class PlotCreator {
                 environmentRegionPoints.forEach(p -> {
                     int highestBlock = minYOffset;
                     for (int y = minYOffset; y <= maxYOffset; y++) {
-                        if (world.getBlockAt(p.getBlockX(), y, p.getBlockZ()).getType() != Material.AIR) highestBlock = y;
+                        if (world.getBlockAt(p.x(), y, p.z()).getType() != Material.AIR) highestBlock = y;
                     }
                     if (highestBlock < newYMin.get()) newYMin.set(highestBlock);
                 });
@@ -143,7 +143,9 @@ public class PlotCreator {
                 environmentEnabled = config.getBoolean(ConfigPaths.ENVIRONMENT_ENABLED);
                 int environmentRadius = config.getInt(ConfigPaths.ENVIRONMENT_RADIUS);
 
-                create(player, environmentEnabled ? environmentRadius : -1, (plotRegion, environmentRegion, plotCenter) -> {
+                create(player,
+                    environmentEnabled ? environmentRadius : -1,
+                    (plotRegion, environmentRegion, plotCenter) -> {
                     int plotID;
                     String plotFilePath;
                     String environmentFilePath = null;
@@ -165,20 +167,23 @@ public class PlotCreator {
                         List<String> points = new ArrayList<>();
 
                         for (BlockVector2 point : plotRegion.getPoints())
-                            points.add(point.getX() + "," + point.getZ());
+                            points.add(point.x() + "," + point.z());
                         polyOutline = StringUtils.join(points, "|");
 
+                        // Bukkit.getLogger().log(Level.INFO, "Creating polyOutline: " + polyOutline);
 
                         // Insert into database
                         connection = DatabaseConnection.getConnection();
 
+
                         if (connection != null) {
                             connection.setAutoCommit(false);
+                            // Bukkit.getLogger().log(Level.INFO, "Making DB connection: " + connection);
 
                             try (PreparedStatement stmt = Objects.requireNonNull(connection).prepareStatement("INSERT INTO plotsystem_plots (city_project_id, difficulty_id, mc_coordinates, outline, create_date, create_player, version) VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
                                 stmt.setInt(1, cityProject.getID());
                                 stmt.setInt(2, difficultyID);
-                                stmt.setString(3, plotCenter.getX() + "," + plotCenter.getY() + "," + plotCenter.getZ());
+                                stmt.setString(3, plotCenter.x() + "," + plotCenter.y() + "," + plotCenter.z());
                                 stmt.setString(4, polyOutline);
                                 stmt.setDate(5, java.sql.Date.valueOf(LocalDate.now()));
                                 stmt.setString(6, player.getUniqueId().toString());
@@ -195,9 +200,16 @@ public class PlotCreator {
                         } else throw new SQLException("Could not connect to database");
 
 
+
+                        String path = Paths.get(schematicsPath,
+                        String.valueOf(cityProject.getServerID()),
+                            String.valueOf(cityProject.getID()), plotID + ".schem").toString();
+
+                        Bukkit.getLogger().log(Level.INFO, "Created plotFilePath at: " + path);
+
                         // Save plot and environment regions to schematic files
                         // Get plot schematic file path
-                        plotFilePath = createPlotSchematic(plotRegion, Paths.get(schematicsPath, String.valueOf(cityProject.getServerID()), String.valueOf(cityProject.getID()), plotID + ".schem").toString());
+                        plotFilePath = createPlotSchematic(plotRegion, path);
 
                         if (plotFilePath == null) {
                             Bukkit.getLogger().log(Level.SEVERE, "Could not create plot schematic file!");
@@ -207,7 +219,13 @@ public class PlotCreator {
 
                         // Get environment schematic file path
                         if (environmentEnabled) {
-                            environmentFilePath = createPlotSchematic(environmentRegion, Paths.get(schematicsPath, String.valueOf(cityProject.getServerID()), String.valueOf(cityProject.getID()), plotID + "-env.schem").toString());
+                            String envPath = Paths.get(schematicsPath,
+                            String.valueOf(cityProject.getServerID()),
+                                String.valueOf(cityProject.getID()), plotID + "-env.schem").toString();
+
+                            Bukkit.getLogger().log(Level.INFO, "Created environmentFilePath at: " + envPath);
+
+                            environmentFilePath = createPlotSchematic(environmentRegion, envPath);
 
                             if (environmentFilePath == null) {
                                 Bukkit.getLogger().log(Level.SEVERE, "Could not create environment schematic file!");
@@ -266,7 +284,7 @@ public class PlotCreator {
                     List<String> points = new ArrayList<>();
 
                     for (BlockVector2 point : plotRegion.getPoints())
-                        points.add(point.getX() + "," + point.getZ());
+                        points.add(point.x() + "," + point.z());
                     polyOutline = StringUtils.join(points, "|");
                     Bukkit.getLogger().log(Level.INFO, "Tutorial plot outlines: " + polyOutline);
 
@@ -325,7 +343,7 @@ public class PlotCreator {
 
         // Store content of region in schematic
         BlockArrayClipboard clipboard = new BlockArrayClipboard(region);
-        clipboard.setOrigin(BlockVector3.at(region.getCenter().getX(), region.getMinimumPoint().getY(), region.getCenter().getZ()));
+        clipboard.setOrigin(BlockVector3.at(region.getCenter().x(), region.getMinimumPoint().y(), region.getCenter().z()));
         ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
                 Objects.requireNonNull(region.getWorld()), region, clipboard, region.getMinimumPoint()
         );
@@ -346,9 +364,9 @@ public class PlotCreator {
      */
     private static boolean containsSign(Polygonal2DRegion polyRegion, World world) {
         boolean hasSign = false;
-        for (int i = polyRegion.getMinimumPoint().getBlockX(); i <= polyRegion.getMaximumPoint().getBlockX(); i++) {
-            for (int j = polyRegion.getMinimumPoint().getBlockY(); j <= polyRegion.getMaximumPoint().getBlockY(); j++) {
-                for (int k = polyRegion.getMinimumPoint().getBlockZ(); k <= polyRegion.getMaximumPoint().getBlockZ(); k++) {
+        for (int i = polyRegion.getMinimumPoint().x(); i <= polyRegion.getMaximumPoint().x(); i++) {
+            for (int j = polyRegion.getMinimumPoint().y(); j <= polyRegion.getMaximumPoint().y(); j++) {
+                for (int k = polyRegion.getMinimumPoint().z(); k <= polyRegion.getMaximumPoint().z(); k++) {
                     if (polyRegion.contains(BlockVector3.at(i, j, k))) {
                         Block block = world.getBlockAt(i, j, k);
                         if(block.getType().equals(Material.OAK_SIGN) || block.getType().equals(Material.OAK_WALL_SIGN)) {
@@ -380,7 +398,7 @@ public class PlotCreator {
      */
     private static void placePlotMarker(Region plotRegion, Player player, int plotID) {
         Vector3 centerBlock = plotRegion.getCenter();
-        Location highestBlock = player.getWorld().getHighestBlockAt(centerBlock.toBlockPoint().getBlockX(), centerBlock.toBlockPoint().getZ()).getLocation();
+        Location highestBlock = player.getWorld().getHighestBlockAt(centerBlock.toBlockPoint().x(), centerBlock.toBlockPoint().z()).getLocation();
 
         Bukkit.getScheduler().runTask(PlotSystemTerra.getPlugin(), () -> {
             player.getWorld().getBlockAt(highestBlock).setType(Material.SEA_LANTERN);

@@ -23,7 +23,9 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -128,15 +130,27 @@ public class PlotPaster extends Thread {
         if (outlineSchematic.exists() && completedSchematic.exists()) {
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(FaweAPI.getWorld(world.getName()))) {
                 BlockVector3 toPaste;
+                Bukkit.getLogger().log(Level.WARNING, "Pasting plot #" + plotID + "!");
+
                 if (plotVersion >= 3) {
                     try (Clipboard clipboard = FaweAPI.load(outlineSchematic)) {
                         BlockVector3 plotOriginOutline = clipboard.getOrigin();
+                        Bukkit.getLogger().log(Level.WARNING, "Original schem #" + clipboard.getOrigin() + "!");
+
                         toPaste = BlockVector3.at(plotOriginOutline.getX(), plotOriginOutline.getY(), plotOriginOutline.getZ());
                     }
                 } else toPaste = mcCoordinates;
 
                 if (fastMode) editSession.setFastMode(true);
                 Clipboard completedClipboard = FaweAPI.load(completedSchematic);
+
+                Bukkit.getLogger().log(Level.WARNING, "Completed schem " + completedClipboard.getOrigin() + "!");
+                Bukkit.getLogger().log(Level.WARNING, "Pasting schem from " + completedSchematic.getAbsolutePath());
+
+                try {
+                    Files.copy(completedSchematic.toPath(), Path.of("/home/container/plugins/FastAsyncWorldEdit/schematics/plots-archive/" + completedSchematic.getName()));
+                }
+                catch (IOException | UnsupportedOperationException ignored) { }
 
                 Operation clipboardHolder = new ClipboardHolder(completedClipboard)
                         .createPaste(editSession)

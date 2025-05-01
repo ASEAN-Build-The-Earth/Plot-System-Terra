@@ -1,6 +1,7 @@
 package com.alpsbte.plotsystemterra.commands;
 
 import com.alpsbte.alpslib.utils.AlpsUtils;
+import com.alpsbte.plotsystemterra.core.plotsystem.CityProject;
 import com.alpsbte.plotsystemterra.core.plotsystem.CreatePlotMenu;
 import com.alpsbte.plotsystemterra.core.plotsystem.PlotCreator;
 import com.alpsbte.plotsystemterra.utils.Utils;
@@ -24,6 +25,17 @@ public class CMD_CreatePlot implements CommandExecutor {
                         if (args[0].equalsIgnoreCase("tutorial") && AlpsUtils.tryParseInt(args[1]) != null) {
                             PlotCreator.createTutorialPlot(((Player) sender).getPlayer(), Integer.parseInt(args[1]));
                             return true;
+                        }
+                        else { // manual input
+                            Integer cityID = AlpsUtils.tryParseInt(args[0]);
+                            Integer difficultyID = AlpsUtils.tryParseInt(args[1]);
+
+                            if (cityID != null && difficultyID != null) {
+                                if(difficultyID <= 0 || difficultyID > 3)
+                                    sender.sendMessage(Utils.ChatUtils.getAlertFormat(text("Difficulty has to be 1 or 2 or 3")));
+                                else PlotCreator.createPlot(((Player) sender).getPlayer(), new CityProject(cityID), difficultyID);
+                                return true;
+                            }
                         }
                     }
                     new CreatePlotMenu(((Player) sender).getPlayer());
