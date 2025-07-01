@@ -45,28 +45,38 @@ public class PlotPaster extends Thread {
 
     @Override
     public void run() {
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(PlotSystemTerra.getPlugin(),
-                () -> CompletableFuture.runAsync(() -> {
-                    List<Plot> plots = PlotSystemTerra.getDataProvider().getPlotDataProvider().getPlotsToPaste();
-                    int pastedPlots = 0;
-                    for (Plot plot : plots) {
-                        CityProject cityProject = PlotSystemTerra.getDataProvider().getCityProjectDataProvider().getCityProject(plot.getCityProjectId());
-                        // paste schematic
-                        try {
-                            if (pastePlotSchematic(plot, cityProject, world, plot.getCompletedSchematic(), plot.getPlotVersion())) {
-                                pastedPlots++;
-                            }
-                        } catch (Exception e) {
-                            PlotSystemTerra.getPlugin().getComponentLogger().error(text("An error occurred while pasting plot #" + plot.getId()), e);
-                        }
-                    }
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(PlotSystemTerra.getPlugin(), () ->
+            CompletableFuture.supplyAsync(() -> PlotSystemTerra.getDataProvider().getPlotDataProvider().getPlotsToPaste())
+                .orTimeout((long) 60.0, TimeUnit.SECONDS)
+                .whenComplete((plots, error) -> {
 
-                    if (broadcastMessages && pastedPlots != 0) {
-                        Bukkit.broadcast(Utils.ChatUtils.getInfoFormat(text("Pasted ", GREEN)
-                                .append(text(pastedPlots, GOLD)
-                                        .append(text(" plot" + (pastedPlots > 1 ? "s" : "") + "!", GREEN)))));
+                if(error != null) {
+                    PlotSystemTerra.getPlugin().getComponentLogger().error(text("Error occurred fetching plot to paste"), error);
+                    return;
+                }
+
+                PlotSystemTerra.getPlugin().getComponentLogger().info(text("Fetched #" + plots.size() + " to paste"));
+
+                int pastedPlots = 0;
+                for (Plot plot : plots) {
+                    CityProject cityProject = PlotSystemTerra.getDataProvider().getCityProjectDataProvider().getCityProject(plot.getCityProjectId());
+                    // paste schematic
+                    try {
+                        if (pastePlotSchematic(plot, cityProject, world, plot.getCompletedSchematic(), plot.getPlotVersion())) {
+                            pastedPlots++;
+                        }
+                    } catch (Exception e) {
+                        PlotSystemTerra.getPlugin().getComponentLogger().error(text("An error occurred while pasting plot #" + plot.getId()), e);
                     }
-                }).orTimeout((long) 60.0, TimeUnit.SECONDS), 0L, 20L * pasteInterval);
+                }
+
+                if (broadcastMessages && pastedPlots != 0) {
+                    Bukkit.broadcast(Utils.ChatUtils.getInfoFormat(text("Pasted ", GREEN)
+                        .append(text(pastedPlots, GOLD)
+                        .append(text(" plot" + (pastedPlots > 1 ? "s" : "") + "!", GREEN)))));
+                }
+            })
+        , 0L, 20L * pasteInterval);
     }
 
     public static boolean pastePlotSchematic(Plot plot, CityProject city, World world, byte[] completedSchematic, double plotVersion) throws WorldEditException {
@@ -76,7 +86,7 @@ public class PlotPaster extends Thread {
             return false;
         }
 
-        if (serverName.equals(city.getServerName())) return false;
+        // if (serverName.equals(city.getServerName())) return false;
 
         // check mc version
         int[] serverVersion = getMajorMinorPatch(Bukkit.getServer().getMinecraftVersion());

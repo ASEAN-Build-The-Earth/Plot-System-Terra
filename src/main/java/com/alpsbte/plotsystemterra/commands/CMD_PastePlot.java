@@ -35,11 +35,11 @@ public class CMD_PastePlot implements CommandExecutor {
         try {
             CompletableFuture.supplyAsync(() -> PlotSystemTerra.getDataProvider().getPlotDataProvider().getPlot(plotID))
                     .thenAccept(plot -> plotValidation(sender, plot, plotID)).exceptionally(e -> {
-                        sender.sendMessage(Utils.ChatUtils.getAlertFormat(text("Plot with the ID " + plotID + " could not be found!")));
+                        sender.sendMessage(Utils.ChatUtils.getAlertFormat(text("Plot with the ID " + plotID + " could not be found! (" + e.getMessage() + ')')));
                         return null;
                     });
         } catch (DataException e) {
-            sender.sendMessage(Utils.ChatUtils.getAlertFormat(text("Plot with the ID " + plotID + " could not be found!")));
+            sender.sendMessage(Utils.ChatUtils.getAlertFormat(text("Plot with the ID " + plotID + " could not be found! ("  + e.getMessage() + ')')));
         }
         return true;
     }
