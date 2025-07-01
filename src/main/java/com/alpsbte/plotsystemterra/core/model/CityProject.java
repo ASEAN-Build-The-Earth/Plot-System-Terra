@@ -31,6 +31,7 @@ public class CityProject {
         return id;
     }
 
+    @Deprecated
     public String getServerName() {
         return serverName;
     }
