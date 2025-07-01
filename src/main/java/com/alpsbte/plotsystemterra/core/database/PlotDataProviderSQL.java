@@ -16,15 +16,17 @@ import java.util.concurrent.Executors;
 public class PlotDataProviderSQL implements PlotDataProvider {
     @Override
     public Plot getPlot(int id) throws DataException {
-        try (ResultSet rs = DatabaseConnection.createStatement("SELECT status, city_project_id, plot_version, mc_version FROM plot WHERE id = ?")
+        try (ResultSet rs = DatabaseConnection.createStatement(
+                "SELECT status, city_project_id, complete_schematic, plot_version, mc_version FROM plot WHERE plot_id = ?")
                 .setValue(id).executeQuery()) {
 
             if (!rs.next()) return null;
 
             String status = rs.getString(1);
             String cityProjectId = rs.getString(2);
-            double plotVersion = rs.getDouble(3);
-            String mcVersion = rs.getString(4);
+            byte[] schematic = rs.getBytes(3);
+            double plotVersion = rs.getDouble(4);
+            String mcVersion = rs.getString(5);
 
             DatabaseConnection.closeResultSet(rs);
 
@@ -33,7 +35,8 @@ public class PlotDataProviderSQL implements PlotDataProvider {
                     status,
                     cityProjectId,
                     plotVersion,
-                    mcVersion
+                    mcVersion,
+                    schematic
             );
         } catch (SQLException e) {
             throw new DataException(e.getMessage());
@@ -137,20 +140,23 @@ public class PlotDataProviderSQL implements PlotDataProvider {
         List<Plot> plots = new ArrayList<>();
 
         try (ResultSet rs = DatabaseConnection
-                .createStatement("SELECT plot_id, status, city_project_id, plot_version, mc_version, completed_schematic FROM plot WHERE status = 'completed' AND is_pasted = '0' LIMIT 20")
+                .createStatement("SELECT plot_id, status, city_project_id, plot_version, mc_version, complete_schematic FROM plot WHERE status = 'completed' AND is_pasted = '0' LIMIT 20")
                 .executeQuery()) {
-            if (!rs.next()) return plots;
 
-            int id = rs.getInt(1);
-            String status = rs.getString(2);
-            String cityProjectId = rs.getString(3);
-            double plotVersion = rs.getDouble(4);
-            String mcVersion = rs.getString(5);
-            byte[] completedSchematic = rs.getBytes(6);
+            while (rs.next()) {
+                int id = rs.getInt(1);
+                String status = rs.getString(2);
+                String cityProjectId = rs.getString(3);
+                double plotVersion = rs.getDouble(4);
+                String mcVersion = rs.getString(5);
+                byte[] completedSchematic = rs.getBytes(6);
 
-            plots.add(new Plot(
-               id, status, cityProjectId, plotVersion, mcVersion, completedSchematic
-            ));
+                plots.add(new Plot(
+                        id, status, cityProjectId, plotVersion, mcVersion, completedSchematic
+                ));
+            }
+
+            DatabaseConnection.closeResultSet(rs);
 
         } catch (SQLException e) {
             throw new DataException(e.getMessage());
