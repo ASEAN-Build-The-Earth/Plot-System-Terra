@@ -156,11 +156,11 @@ public class PlotSystemTerra extends JavaPlugin {
         }
 
         // Check for updates
-        if (ConfigUtil.getInstance().configs[0].getBoolean(ConfigPaths.CHECK_FOR_UPDATES)) {
-            Bukkit.getConsoleSender().sendMessage(empty());
-            String result = startUpdateChecker();
-            Bukkit.getConsoleSender().sendMessage(text("Update-Checker: " + result, GOLD));
-        }
+//        if (ConfigUtil.getInstance().configs[0].getBoolean(ConfigPaths.CHECK_FOR_UPDATES)) {
+//            Bukkit.getConsoleSender().sendMessage(empty());
+//            String result = startUpdateChecker();
+//            Bukkit.getConsoleSender().sendMessage(text("Update-Checker: " + result, GOLD));
+//        }
 
         // Start checking for plots to paste
         plotPaster = new PlotPaster();
