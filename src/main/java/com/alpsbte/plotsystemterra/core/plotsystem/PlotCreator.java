@@ -47,7 +47,7 @@ public class PlotCreator {
 
     public final static String schematicsPath = Paths.get(PlotSystemTerra.getPlugin().getDataFolder().getAbsolutePath(), "schematics") + File.separator;
     public final static int MIN_OFFSET_Y = 5;
-    public final static String[] DIFFICULTY = new String[] { "easy", "medium", "hard" };
+    public final static String[] DIFFICULTY = new String[] { "RESIDENTIAL", "LOW_RISE", "MID_RISE", "HIGH_RISE", "MIXED" };
 
     public static void create(Player player, int environmentRadius, IPlotRegionsAction plotRegionsAction) {
         Vector3 plotCenter;
