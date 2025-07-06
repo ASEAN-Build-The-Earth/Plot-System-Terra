@@ -6,6 +6,7 @@ import com.alpsbte.alpslib.utils.head.AlpsHeadEventListener;
 import com.alpsbte.plotsystemterra.commands.CMD_CreatePlot;
 import com.alpsbte.plotsystemterra.commands.CMD_PastePlot;
 import com.alpsbte.plotsystemterra.commands.CMD_PlotSystemTerra;
+import com.alpsbte.plotsystemterra.commands.CMD_Refresh;
 import com.alpsbte.plotsystemterra.core.api.ApiConstants;
 import com.alpsbte.plotsystemterra.core.api.DataProviderAPI;
 import com.alpsbte.plotsystemterra.core.database.DatabaseConnection;
@@ -148,6 +149,7 @@ public class PlotSystemTerra extends JavaPlugin {
             Objects.requireNonNull(getCommand("createplot")).setExecutor(new CMD_CreatePlot());
             Objects.requireNonNull(getCommand("pasteplot")).setExecutor(new CMD_PastePlot());
             Objects.requireNonNull(getCommand("plotsystemterra")).setExecutor(new CMD_PlotSystemTerra());
+            Objects.requireNonNull(getCommand("refresh")).setExecutor(new CMD_Refresh());
             Bukkit.getConsoleSender().sendMessage(successPrefix.append(text("Successfully registered commands.")));
         } catch (Exception ex) {
             Bukkit.getConsoleSender().sendMessage(errorPrefix.append(text("Could not register commands.")));

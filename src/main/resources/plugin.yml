@@ -16,3 +16,6 @@ commands:
   plotsystemterra:
     description: Sends info about the plugin
     usage: /plotsystemterra
+  refresh:
+    description: Refresh city project data
+    usage: /refresh
