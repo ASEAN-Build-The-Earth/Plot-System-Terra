@@ -121,41 +121,39 @@ public class CreatePlotMenu {
                 .build();
         mask.apply(difficultyMenu);
 
-        difficultyMenu.getSlot(10).setItem(
-                new ItemBuilder(Material.LIME_WOOL, 1)
-                        .setName(text("Easy", GREEN, BOLD))
-                        .build()
-        );
+        // START ASEAN - Custom Difficulties "RESIDENTIAL", "LOW_RISE", "MID_RISE", "HIGH_RISE", "MIXED"
+        this.placeDifficultySlot(11, cityProject, Material.LIME_WOOL, "Residential", "RESIDENTIAL");
 
-        difficultyMenu.getSlot(10).setClickHandler((clickPlayer, clickInformation) -> {
-            clickPlayer.closeInventory();
-            PlotCreator.createPlot(clickPlayer, cityProject, "easy");
-        });
+        this.placeDifficultySlot(12, cityProject, Material.YELLOW_WOOL, "Low Rise", "LOW_RISE");
 
-        difficultyMenu.getSlot(13).setItem(
-                new ItemBuilder(Material.ORANGE_WOOL, 1)
-                        .setName(text("Medium", GOLD, BOLD))
-                        .build()
-        );
+        this.placeDifficultySlot(13, cityProject, Material.ORANGE_WOOL, "Mid Rise", "MID_RISE");
 
-        difficultyMenu.getSlot(13).setClickHandler((clickPlayer, clickInformation) -> {
-            clickPlayer.closeInventory();
-            PlotCreator.createPlot(clickPlayer, cityProject, "medium");
-        });
+        this.placeDifficultySlot(14, cityProject, Material.RED_WOOL, "High Rise", "MID_RISE");
 
-        difficultyMenu.getSlot(16).setItem(
-                new ItemBuilder(Material.RED_WOOL, 1)
-                        .setName(text("Hard", RED, BOLD))
-                        .build()
-        );
-
-        difficultyMenu.getSlot(16).setClickHandler((clickPlayer, clickInformation) -> {
-            clickPlayer.closeInventory();
-            PlotCreator.createPlot(clickPlayer, cityProject, "hard");
-        });
+        this.placeDifficultySlot(15, cityProject, Material.PURPLE_WOOL, "Mixed", "MID_RISE");
+        // END ASEAN
 
         return difficultyMenu;
     }
+
+    // START ASEAN - Menu slots abstraction
+    private void placeDifficultySlot(int position,
+        @org.jetbrains.annotations.NotNull CityProject cityProject,
+        @org.jetbrains.annotations.NotNull Material displayMaterial,
+        @org.jetbrains.annotations.NotNull String displayName,
+        @org.jetbrains.annotations.NotNull String difficultyID) {
+        difficultyMenu.getSlot(position).setItem(
+                new ItemBuilder(displayMaterial, 1)
+                        .setName(text(displayName, GOLD, BOLD))
+                        .build()
+        );
+
+        difficultyMenu.getSlot(position).setClickHandler((clickPlayer, clickInformation) -> {
+            clickPlayer.closeInventory();
+            PlotCreator.createPlot(clickPlayer, cityProject, difficultyID);
+        });
+    }
+    // END ASEAN
 
     private ItemStack getStats(Location coords) {
         return new ItemBuilder((selectedCityID == -1) ? new ItemStack(Material.NAME_TAG) : cityProjects.get(selectedCityID).getItem())
