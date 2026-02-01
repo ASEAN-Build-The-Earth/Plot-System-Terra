@@ -1,3 +1,27 @@
+/*
+ *  The MIT License (MIT)
+ *
+ *  Copyright © 2021-2025, Alps BTE <bte.atchli@gmail.com>
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ */
+
 package com.alpsbte.plotsystemterra.core.api;
 
 import com.alpsbte.plotsystemterra.core.data.CityProjectDataProvider;
@@ -15,9 +39,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class CityProjectDataProviderAPI implements CityProjectDataProvider {
 
@@ -50,22 +71,11 @@ public class CityProjectDataProviderAPI implements CityProjectDataProvider {
                 output.add(new CityProject(id, countryCode, isVisible, material, customModelData, serverName));
             });
         } catch (IOException | InterruptedException | ParseException e) {
-            throw new DataException(e.getMessage());
+            Thread.currentThread().interrupt();
+            throw new DataException(e.getMessage(), e);
         }
 
         return output;
-    }
-
-    @Override
-    public CompletableFuture<List<CityProject>> getCityProjectsAsync() throws DataException {
-        CompletableFuture<List<CityProject>> completableFuture = new CompletableFuture<>();
-        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
-            executor.submit(() -> {
-                completableFuture.complete(getCityProjects());
-                return null;
-            });
-        }
-        return completableFuture;
     }
 
     @Override
@@ -89,23 +99,12 @@ public class CityProjectDataProviderAPI implements CityProjectDataProvider {
             boolean isVisible = (boolean) jsonObj.get("isVisible");
             String material = (String) jsonObj.get("material");
             String customModelData = (String) jsonObj.get("customModelData");
-            String serverName = (String) jsonObj.get("customModelData");
+            String serverName = (String) jsonObj.get("serverName");
 
             return new CityProject(cityProjectId, countryCode, isVisible, material, customModelData, serverName);
         } catch (IOException | InterruptedException | ParseException e) {
-            throw new DataException(e.getMessage());
+            Thread.currentThread().interrupt();
+            throw new DataException(e.getMessage(), e);
         }
-    }
-
-    @Override
-    public CompletableFuture<CityProject> getCityProjectAsync(String id) throws DataException {
-        CompletableFuture<CityProject> completableFuture = new CompletableFuture<>();
-        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
-            executor.submit(() -> {
-                completableFuture.complete(getCityProject(id));
-                return null;
-            });
-        }
-        return completableFuture;
     }
 }

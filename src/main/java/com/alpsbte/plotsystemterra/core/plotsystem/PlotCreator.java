@@ -24,6 +24,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -40,18 +41,17 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 
 public class PlotCreator {
+    public static final String SCHEMATICS_PATH = Paths.get(PlotSystemTerra.getPlugin().getDataFolder().getAbsolutePath(), "schematics") + File.separator;
+    public static final int MIN_OFFSET_Y = 5;
+    private static final String[] DIFFICULTY = new String[] { "RESIDENTIAL", "LOW_RISE", "MID_RISE", "HIGH_RISE", "MIXED" };
+
     @FunctionalInterface
     public interface IPlotRegionsAction {
         void onSchematicsCreationComplete(Polygonal2DRegion plotRegion, CylinderRegion environmentRegion, Vector3 plotCenter);
     }
 
-    public final static String schematicsPath = Paths.get(PlotSystemTerra.getPlugin().getDataFolder().getAbsolutePath(), "schematics") + File.separator;
-    public final static int MIN_OFFSET_Y = 5;
-    public final static String[] DIFFICULTY = new String[] { "RESIDENTIAL", "LOW_RISE", "MID_RISE", "HIGH_RISE", "MIXED" };
-
     public static void create(Player player, int environmentRadius, IPlotRegionsAction plotRegionsAction) {
         Vector3 plotCenter;
-        CylinderRegion environmentRegion = null;
 
         // Get WorldEdit selection of player
         Region rawPlotRegion;
@@ -64,100 +64,89 @@ public class PlotCreator {
         }
 
         // Create plot and environment regions
-        // Check if WorldEdit selection is polygonal
-        if (rawPlotRegion instanceof Polygonal2DRegion plotRegion) {
-
-            // Check if the polygonal region is valid
-            String text = "Please adjust your selection size!";
-            if (plotRegion.getLength() > 100 ) {
-                player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Lenght is " + plotRegion.getLength() + " and can only be smaller than 100.!")));
+        // Get poly region
+        Polygonal2DRegion plotRegion;
+        switch (rawPlotRegion) {
+            case Polygonal2DRegion pr -> plotRegion = pr;
+            case CuboidRegion cr -> plotRegion = new Polygonal2DRegion(
+                    rawPlotRegion.getWorld(),
+                    cr.polygonize(4),
+                    cr.getMinimumY(),
+                    cr.getMaximumY()
+            );
+            default -> {
+                player.sendMessage(Utils.ChatUtils.getAlertFormat(text("Please use polygonal selection to create a new plot!")));
                 return;
             }
-            if (plotRegion.getWidth() > 100) {
-                player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Width is " + plotRegion.getWidth() + " and can only be smaller than 100.!")));
-                return;
-            }
-            if (plotRegion.getHeight() > 256 - MIN_OFFSET_Y) {
-                player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Height is " + plotRegion.getHeight() + " and can only be smaller than 256 - " + MIN_OFFSET_Y + "!")));
-                return;
-            }
-
-            // Get plot minY and maxY
-            double offsetHeight = (256 - plotRegion.getHeight()) / 2d;
-            final int minYOffset = plotRegion.getMinimumY() - (int) Math.ceil(offsetHeight);
-            final int maxYOffset = plotRegion.getMaximumY() + (int) Math.floor(offsetHeight);
-            final int minY = plotRegion.getMinimumY() - MIN_OFFSET_Y;
-            final int maxY = maxYOffset + (int) Math.ceil(offsetHeight) - MIN_OFFSET_Y;
-
-            plotRegion.setMinimumY(minY);
-            plotRegion.setMaximumY(maxY);
-
-            // Create the environment selection
-            if (environmentRadius > 0) {
-                // Get min region size for environment radius
-                int radius = Math.max(plotRegion.getWidth() / 2 + environmentRadius, plotRegion.getLength() / 2 + environmentRadius);
-
-                // Create a new cylinder region with the size of the plot + the configured radius around it
-                Vector3 plotRegionCenter = plotRegion.getCenter();
-                environmentRegion = new CylinderRegion(
-                        plotRegion.getWorld(),
-                        BlockVector3.at(Math.floor(plotRegionCenter.x()), plotRegionCenter.y(), Math.floor(plotRegionCenter.z())),
-                        Vector2.at(radius, radius),
-                        minY,
-                        maxY
-                );
-
-                // Convert environment region to polygonal region and save points
-                final List<BlockVector2> environmentRegionPoints = environmentRegion.polygonize(-1);
-                final AtomicInteger newYMin = new AtomicInteger(minY);
-
-                // Iterate over the points and check for the lowest Y value
-                final World world = player.getWorld();
-                environmentRegionPoints.forEach(p -> {
-                    int highestBlock = minYOffset;
-                    for (int y = minYOffset; y <= maxYOffset; y++) {
-                        if (world.getBlockAt(p.x(), y, p.z()).getType() != Material.AIR) highestBlock = y;
-                    }
-                    if (highestBlock < newYMin.get()) newYMin.set(highestBlock);
-                });
-
-                // Update plot and environment min and max Y to new value if necessary
-                if (newYMin.get() < minY) {
-                    int heightDif = (minY - newYMin.get()) + MIN_OFFSET_Y;
-                    plotRegion.setMinimumY(newYMin.get() - MIN_OFFSET_Y);
-                    environmentRegion.setMinimumY(newYMin.get() - MIN_OFFSET_Y);
-                    plotRegion.setMaximumY(maxY - heightDif);
-                    environmentRegion.setMaximumY(maxY - heightDif);
-                }
-            }
-            plotCenter = plotRegion.getCenter();
-            plotRegionsAction.onSchematicsCreationComplete(plotRegion, environmentRegion, plotCenter);
-        } else {
-            player.sendMessage(Utils.ChatUtils.getAlertFormat(text("Please use polygonal selection to create a new plot!")));
         }
+
+        // Check if the polygonal region is valid
+        String text = "Please adjust your selection size!";
+        if (plotRegion.getLength() > 100) {
+            player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Length is " + plotRegion.getLength() + " and can only be smaller than 100.!")));
+            return;
+        }
+        if (plotRegion.getWidth() > 100) {
+            player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Width is " + plotRegion.getWidth() + " and can only be smaller than 100.!")));
+            return;
+        }
+        if (plotRegion.getHeight() > 256 - MIN_OFFSET_Y) {
+            player.sendMessage(Utils.ChatUtils.getAlertFormat(text(text + " Height is " + plotRegion.getHeight() + " and can only be smaller than 256 - " + MIN_OFFSET_Y + "!")));
+            return;
+        }
+
+        // Get plot minY and maxY
+        double offsetHeight = (256 - plotRegion.getHeight()) / 2d;
+        final int minYOffset = plotRegion.getMinimumY() - (int) Math.ceil(offsetHeight);
+        final int maxYOffset = plotRegion.getMaximumY() + (int) Math.floor(offsetHeight);
+        final int minY = plotRegion.getMinimumY() - MIN_OFFSET_Y;
+        final int maxY = maxYOffset + (int) Math.ceil(offsetHeight) - MIN_OFFSET_Y;
+
+        plotRegion.setMinimumY(minY);
+        plotRegion.setMaximumY(maxY);
+
+        // Create the environment selection
+        CylinderRegion environmentRegion = createEnvironmentRegion(
+                plotRegion,
+                environmentRadius,
+                player.getWorld(),
+                minY,
+                maxY,
+                minYOffset,
+                maxYOffset
+        );
+
+        plotCenter = plotRegion.getCenter();
+        plotRegionsAction.onSchematicsCreationComplete(plotRegion, environmentRegion, plotCenter);
     }
 
-    public static void createPlot(Player player, CityProject cityProject, String difficultyID) {
+    public static void createPlot(Player player, @NonNull CityProject cityProject, String difficultyID) {
         PlotCreator.createPlot(player, cityProject.getId(), difficultyID);
     }
 
     public static void createPlotManually(Player player, String cityProjectID, String difficultyID) {
-        PlotSystemTerra.getPlugin().getCityProjectData().getCache().thenAccept(cache -> {
-            if(!cache.hasProjectID(cityProjectID)) {
-                player.sendMessage(Utils.ChatUtils.getAlertFormat(text("City Project ID does not exist to create plot on!")));
+        PlotSystemTerra.getDataProvider().getCityProjectData().getCache().thenAccept(cache -> {
+            if(!cache.hasCache(cityProjectID)) {
+                player.sendMessage(Utils.ChatUtils.getAlertFormat(text("City Project ID does not exist. Cannot create plot!")));
                 return;
             }
 
-            for(String difficulty : DIFFICULTY) {
-                if(!difficultyID.equalsIgnoreCase(difficulty))
-                    continue;
+            String difficulty = null;
+            for(String id : DIFFICULTY) {
+                if (id.equalsIgnoreCase(difficultyID)) {
+                    difficulty = id;
+                    break;
+                }
+            }
 
-                // Both city project ID and difficulty is valid, proceed to plot creation.
-                PlotCreator.createPlot(player, cityProjectID, difficulty);
+            if (difficulty == null) {
+                player.sendMessage(Utils.ChatUtils.getAlertFormat(
+                    text("Difficulty does not exist. Supported difficulties are: " + String.join(", ", DIFFICULTY))
+                ));
                 return;
             }
 
-            player.sendMessage(Utils.ChatUtils.getAlertFormat(text("Difficulty does not exist, Supported difficulty are: " + Arrays.toString(DIFFICULTY))));
+            PlotCreator.createPlot(player, cityProjectID, difficulty);
         });
     }
 
@@ -233,12 +222,12 @@ public class PlotCreator {
                 // Save plot and environment regions to schematic files
                 // Get plot schematic file path
                 byte[] plotSchematic = createPlotSchematic(plotRegion);
-                Files.write(Paths.get(schematicsPath, "tutorials", "id-stage.schematic"), plotSchematic, StandardOpenOption.CREATE);
+                Files.write(Paths.get(SCHEMATICS_PATH, "tutorials", "id-stage.schematic"), plotSchematic, StandardOpenOption.CREATE);
 
                 // Get environment schematic file path
                 if (environmentRadius > 0) {
                     byte[] environmentSchematic = createPlotSchematic(environmentRegion);
-                    Files.write(Paths.get(schematicsPath, "tutorials", "id-env.schematic"), environmentSchematic, StandardOpenOption.CREATE);
+                    Files.write(Paths.get(SCHEMATICS_PATH, "tutorials", "id-env.schematic"), environmentSchematic, StandardOpenOption.CREATE);
                 }
 
                 player.sendMessage(Utils.ChatUtils.getAlertFormat(text("Successfully created new tutorial plot! Check your console for more information!")));
@@ -248,6 +237,47 @@ public class PlotCreator {
                 player.sendMessage(Utils.ChatUtils.getAlertFormat(text("An error occurred while creating plot!")));
             }
         }));
+    }
+
+    public static CylinderRegion createEnvironmentRegion(Polygonal2DRegion plotRegion, int environmentRadius, World world, int minY, int maxY, int minYOffset, int maxYOffset) {
+        if (environmentRadius <= 0) return null;
+        CylinderRegion environmentRegion;
+
+        // Get min region size for environment radius
+        int radius = Math.max(plotRegion.getWidth() / 2 + environmentRadius, plotRegion.getLength() / 2 + environmentRadius);
+
+        // Create a new cylinder region with the size of the plot + the configured radius around it
+        Vector3 plotRegionCenter = plotRegion.getCenter();
+        environmentRegion = new CylinderRegion(
+                plotRegion.getWorld(),
+                BlockVector3.at(Math.floor(plotRegionCenter.x()), plotRegionCenter.y(), Math.floor(plotRegionCenter.z())),
+                Vector2.at(radius, radius),
+                minY,
+                maxY
+        );
+
+        // Convert environment region to polygonal region and save points
+        final List<BlockVector2> environmentRegionPoints = environmentRegion.polygonize(-1);
+        final AtomicInteger newYMin = new AtomicInteger(minY);
+
+        // Iterate over the points and check for the lowest Y value
+        environmentRegionPoints.forEach(p -> {
+            int highestBlock = minYOffset;
+            for (int y = minYOffset; y <= maxYOffset; y++) {
+                if (world.getBlockAt(p.x(), y, p.z()).getType() != Material.AIR) highestBlock = y;
+            }
+            if (highestBlock < newYMin.get()) newYMin.set(highestBlock);
+        });
+
+        // Update plot and environment min and max Y to new value if necessary
+        if (newYMin.get() < minY) {
+            int heightDif = (minY - newYMin.get()) + MIN_OFFSET_Y;
+            plotRegion.setMinimumY(newYMin.get() - MIN_OFFSET_Y);
+            environmentRegion.setMinimumY(newYMin.get() - MIN_OFFSET_Y);
+            plotRegion.setMaximumY(maxY - heightDif);
+            environmentRegion.setMaximumY(maxY - heightDif);
+        }
+        return environmentRegion;
     }
 
     /**
@@ -281,7 +311,7 @@ public class PlotCreator {
      * @param world      Region world
      * @return true if polygon region contains a sign, false otherwise
      */
-    private static boolean containsSign(Polygonal2DRegion polyRegion, World world) {
+    private static boolean containsSign(@NotNull Polygonal2DRegion polyRegion, World world) {
         boolean hasSign = false;
         for (int i = polyRegion.getMinimumPoint().x(); i <= polyRegion.getMaximumPoint().x(); i++) {
             for (int j = polyRegion.getMinimumPoint().y(); j <= polyRegion.getMaximumPoint().y(); j++) {
@@ -314,7 +344,7 @@ public class PlotCreator {
      * @param player     Player
      * @param plotID     Plot ID
      */
-    private static void placePlotMarker(Region plotRegion, Player player, int plotID) {
+    private static void placePlotMarker(@NotNull Region plotRegion, Player player, int plotID) {
         Vector3 centerBlock = plotRegion.getCenter();
         Location highestBlock = player.getWorld().getHighestBlockAt(centerBlock.toBlockPoint().x(), centerBlock.toBlockPoint().z()).getLocation();
 
@@ -341,7 +371,7 @@ public class PlotCreator {
      * @param player Player
      * @return Direction
      */
-    private static BlockFace getPlayerFaceDirection(Player player) {
+    private static BlockFace getPlayerFaceDirection(@NotNull Player player) {
         float y = player.getLocation().getYaw();
         if (y < 0) {
             y += 360;
