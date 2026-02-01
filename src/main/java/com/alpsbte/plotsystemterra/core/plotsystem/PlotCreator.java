@@ -43,7 +43,9 @@ import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 public class PlotCreator {
     public static final String SCHEMATICS_PATH = Paths.get(PlotSystemTerra.getPlugin().getDataFolder().getAbsolutePath(), "schematics") + File.separator;
     public static final int MIN_OFFSET_Y = 5;
+    // ASEAN START - Custom difficulties
     private static final String[] DIFFICULTY = new String[] { "RESIDENTIAL", "LOW_RISE", "MID_RISE", "HIGH_RISE", "MIXED" };
+    // ASEAN END
 
     @FunctionalInterface
     public interface IPlotRegionsAction {
@@ -120,7 +122,7 @@ public class PlotCreator {
         plotRegionsAction.onSchematicsCreationComplete(plotRegion, environmentRegion, plotCenter);
     }
 
-    public static void createPlot(Player player, @NonNull CityProject cityProject, String difficultyID) {
+    public static void createPlot(Player player, @NotNull CityProject cityProject, String difficultyID) {
         PlotCreator.createPlot(player, cityProject.getId(), difficultyID);
     }
 
