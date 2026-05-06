@@ -68,9 +68,9 @@ public class PlotDataProviderSQL implements PlotDataProvider {
     public int createPlot(String cityProjectId, String difficultyId, String outlineBounds,
                           @NotNull UUID createPlayerUUID, byte[] initialSchematic) throws DataException {
 
-        // ASEAN START - added plot_type default value (We dont have it in our db constaint)
-        String queryInsert = "INSERT INTO plot (city_project_id, difficulty_id, outline_bounds, initial_schematic, plot_version, plot_type, created_by)" +
-                "VALUES (?, ?, ?, ?, (SELECT si.current_plot_version FROM system_info si WHERE system_id = 1), ?, ?)";
+        // ASEAN START - added plot_type & status default value (We don't have it in our db constraint)
+        String queryInsert = "INSERT INTO plot (city_project_id, difficulty_id, outline_bounds, initial_schematic, plot_version, plot_type, status, created_by)" +
+                "VALUES (?, ?, ?, ?, (SELECT si.current_plot_version FROM system_info si WHERE system_id = 1), ?, ?, ?)";
         // ASEAN END
 
         return SqlExceptionUtil.handle(() -> SqlHelper.runInsertQuery(queryInsert, ps -> {
@@ -78,10 +78,11 @@ public class PlotDataProviderSQL implements PlotDataProvider {
             ps.setString(2, difficultyId);
             ps.setString(3, outlineBounds);
             ps.setBytes(4, initialSchematic);
-            // ASEAN START - plot_type default value
+            // ASEAN START - plot_type & status default value
             ps.setInt(5, 1);
+            ps.setString(6, "unclaimed");
             // ASEAN END
-            ps.setString(6, createPlayerUUID.toString());
+            ps.setString(7, createPlayerUUID.toString());
 
             int affectedRows = ps.executeUpdate();
             if (affectedRows == 0) {
