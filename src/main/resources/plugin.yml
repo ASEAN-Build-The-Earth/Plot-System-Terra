@@ -19,3 +19,6 @@ commands:
   refresh:
     description: Refresh city project data
     usage: /refresh
+  check:
+    description: Check plot infomation by ID
+    usage: /check <ID>
